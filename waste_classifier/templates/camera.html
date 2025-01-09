@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera</title>
+    <script>
+        let videoStream;
+
+        // Start the camera feed
+        function startCamera() {
+            const video = document.querySelector("#cameraFeed");
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    videoStream = stream;
+                    video.srcObject = stream;
+                })
+                .catch((err) => {
+                    console.error("Error accessing camera: ", err);
+                });
+        }
+
+        // Capture the current frame
+        function captureImage() {
+            const canvas = document.createElement("canvas");
+            const video = document.querySelector("#cameraFeed");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const dataURL = canvas.toDataURL("image/png");
+            sendToServer(dataURL);
+        }
+
+        // Send the captured image to the server
+        function sendToServer(imageData) {
+            fetch("/capture_image", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ image: imageData }),
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    alert(`Predicted Class: ${data.predicted_class}\nConfidence: ${data.confidence}%`);
+                })
+                .catch((err) => console.error("Error:", err));
+        }
+
+        // Stop the camera feed
+        function stopCamera() {
+            if (videoStream) {
+                const tracks = videoStream.getTracks();
+                tracks.forEach((track) => track.stop());
+            }
+        }
+
+        window.addEventListener("beforeunload", stopCamera);
+    </script>
+</head>
+<body onload="startCamera()">
+    <h1>Camera Feed</h1>
+    <video id="cameraFeed" autoplay></video>
+    <br>
+    <button onclick="captureImage()">Capture Image</button>
+</body>
+</html>

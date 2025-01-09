@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garbage Classifier</title>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-top: 30px;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: #34495e;
+            margin-top: 30px;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            margin: 20px 0;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            font-size: 1.2rem;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Camera Section */
+        .camera-section {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #cameraFeed {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 8px;
+            border: 2px solid #3498db;
+        }
+
+        .camera-section button {
+            background-color: #e74c3c;
+            margin-top: 20px;
+        }
+
+        .camera-section button:hover {
+            background-color: #c0392b;
+        }
+
+        /* Result Section */
+        #result {
+            margin-top: 20px;
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .result h3 {
+            font-size: 1.8rem;
+            color: #2c3e50;
+        }
+
+        .result p {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+        }
+
+        .result p strong {
+            color: #3498db;
+        }
+
+        /* Mobile Styles */
+        @media screen and (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .upload-section, .camera-section, #result {
+                width: 95%;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 1rem;
+            }
+
+            .camera-section {
+                margin-top: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to Garbage Classifier</h1>
+
+    <!-- Section for Uploading an Image -->
+    <div class="upload-section">
+        <h2>Upload Image</h2>
+        <form action="/classify" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" id="file" required>
+            <button type="submit">Classify</button>
+        </form>
+    </div>
+
+    <!-- Section for Capturing an Image -->
+    <div class="camera-section" id="cameraSection">
+        <h2>Capture from Camera</h2>
+        <!-- Real-time Camera Feed -->
+        <video id="cameraFeed" autoplay></video>
+        <canvas id="snapshotCanvas" style="display: none;"></canvas>
+        <br>
+        <button id="captureButton">Capture Image</button>
+    </div>
+
+    <!-- Start Camera Button -->
+    <button id="startCameraButton">Start Camera</button>
+
+    <div id="result"></div>
+
+    <script>
+        const startCameraButton = document.getElementById('startCameraButton');
+        const video = document.getElementById('cameraFeed');
+        const canvas = document.getElementById('snapshotCanvas');
+        const captureButton = document.getElementById('captureButton');
+        const resultDiv = document.getElementById('result');
+        const cameraSection = document.getElementById('cameraSection');
+
+        let cameraStream = null;
+
+        // Function to start the camera
+        startCameraButton.addEventListener('click', () => {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    // Show the video and camera section
+                    video.srcObject = stream;
+                    cameraSection.style.display = 'block';
+                    startCameraButton.style.display = 'none'; // Hide the "Start Camera" button
+                    cameraStream = stream;
+                })
+                .catch((err) => {
+                    console.error("Error accessing camera:", err);
+                });
+        });
+
+        // Capture the frame and send it to the backend
+        captureButton.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert canvas to base64 image
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            // Send to Flask backend
+            fetch('/capture', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: imageData }),
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    resultDiv.innerHTML = `
+                        <h3>Prediction</h3>
+                        <p><strong>Class:</strong> ${data.predicted_class}</p>
+                        <p><strong>Confidence:</strong> ${data.confidence}%</p>
+                    `;
+                    resultDiv.style.display = 'block';
+                })
+                .catch((err) => {
+                    console.error("Error:", err);
+                });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classification Result</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        img {
+            max-width: 300px;
+            height: auto;
+            margin: 20px 0;
+        }
+        .result {
+            font-size: 24px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Waste Classification Result</h1>
+    <img src="{{ image_path }}" alt="Uploaded Image">
+    <div class="result">
+        <p><strong>Class:</strong> {{ predicted_class }}</p>
+        <p><strong>Confidence:</strong> {{ confidence }}%</p>
+    </div>
+    <a href="/">Back to Home</a>
+</body>
+</html>
